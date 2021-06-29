@@ -1,0 +1,16 @@
+Example usage:
+./polyrank resnet_18_28_poly_perf.csv --perfseparaterow --usepessidata
+
+The input file resnet_18_28_poly_perf.csv contains the code version number, performance in terms of GFLOPS/s, and the polyscientist/polydl generated L1, L2, L3, and memory working set sizes. The polyrank tool performs predicts performance of each code version by taking into consideration the cache working set sizes and cache latencies and comes up with ranks. It then outputs the polyranks (predicted) and the actual ranks (based on the actual performance provided in the input file). 
+
+For example, the above invocation will create the following outputs:
+$cat resnet_18_28_poly_perf.csv_ranks.csv
+ActualRank,PolyRank,GFLOPS,Version,wins
+1,1,2429,2_64,0
+2,2,2365,4_64,0
+3,4,1852,3_64,0
+4,3,1724,5_64,0
+
+$cat resnet_18_28_poly_perf.csv_top1_perf.csv
+Max_GFLOPS, Poly_Top_1GFLOPS,numVariants,Poly_Top_0.050000,Min_GFLOPS, Median_GFLOPS
+2429,2429,4,2429,1724,1852

@@ -1,0 +1,11 @@
+cache
+L1 32768
+L2 1048576
+L3 40370176
+
+datatype_size
+4
+
+params
+ofw ofh nIfm nOfm kw kh pad_w pad_h nImg ifwp ifhp ofwp ofhp
+56  56  64 256 1 1 0 0 1 56 56 56 56

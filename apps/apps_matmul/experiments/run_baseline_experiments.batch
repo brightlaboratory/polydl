@@ -1,0 +1,20 @@
+#!/bin/bash
+#
+#SBATCH --job-name=polyscientist
+#SBATCH --output=run_experiments.txt
+#
+#SBATCH --time=24:00:00
+#SBATCH --nodes=1
+#SBATCH --partition=clx
+cd $PWD  #FIXME -- path
+
+sh run_matmul_baseline.sh 128 2048 4096 4
+sh run_matmul_baseline.sh 320 3072 4096 4
+sh run_matmul_baseline.sh 2048 4096 32 4
+sh run_matmul_baseline.sh 1024 16 500000 4
+
+sh run_matmul_baseline.sh 4096 4096 4096 4
+sh run_matmul_baseline.sh 1024 32768 1024 4
+sh run_matmul_baseline.sh 32768 1024 1024 4
+sh run_matmul_baseline.sh 1024 1024 32768 4
+

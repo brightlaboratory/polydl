@@ -1,0 +1,46 @@
+FILE=matmul3.c
+ITERS=1000
+sh ./run_matmul.sh $ITERS 1792 3584 7168 64 64 64 64 64 64 $FILE it2
+sh ./run_matmul.sh $ITERS 1792 3584 7168 64 256 64 64 64 64 $FILE it2
+sh ./run_matmul.sh $ITERS 1792 3584 7168 64 896 64 64 64 64 $FILE it2
+sh ./run_matmul.sh $ITERS 1792 3584 7168 64 3584 64 64 64 64 $FILE it2
+
+sh ./run_matmul.sh $ITERS 1792 3584 7168 64 64 256 64 64 64 $FILE it2
+sh ./run_matmul.sh $ITERS 1792 3584 7168 64 64 512 64 64 64 $FILE it2
+sh ./run_matmul.sh $ITERS 1792 3584 7168 64 64 1024 64 64 64 $FILE it2
+sh ./run_matmul.sh $ITERS 1792 3584 7168 64 64 7168 64 64 64 $FILE it2
+
+sh ./run_matmul.sh $ITERS 1792 3584 7168 64 64 64 64 64 64 $FILE jt2
+sh ./run_matmul.sh $ITERS 1792 3584 7168 64 128 64 64 64 64 $FILE jt2
+sh ./run_matmul.sh $ITERS 1792 3584 7168 64 256 64 64 64 64 $FILE jt2
+sh ./run_matmul.sh $ITERS 1792 3584 7168 64 896 64 64 64 64 $FILE jt2
+
+sh ./run_matmul.sh $ITERS 1792 3584 7168 64 64 256 64 64 64 $FILE jt2
+sh ./run_matmul.sh $ITERS 1792 3584 7168 64 64 512 64 64 64 $FILE jt2
+sh ./run_matmul.sh $ITERS 1792 3584 7168 64 64 1024 64 64 64 $FILE jt2
+sh ./run_matmul.sh $ITERS 1792 3584 7168 64 64 7168 64 64 64 $FILE jt2
+
+sh ./run_matmul.sh $ITERS 1792 3584 7168 1792 64 64 64 64 64 $FILE it1
+sh ./run_matmul.sh $ITERS 1792 3584 7168 1792 256 64 64 64 64 $FILE it1
+sh ./run_matmul.sh $ITERS 1792 3584 7168 1792 896 64 64 64 64 $FILE it1
+sh ./run_matmul.sh $ITERS 1792 3584 7168 1792 3584 64 64 64 64 $FILE it1
+
+sh ./run_matmul.sh $ITERS 1792 3584 7168 1792 64 256 64 64 64 $FILE it1
+sh ./run_matmul.sh $ITERS 1792 3584 7168 1792 64 512 64 64 64 $FILE it1
+sh ./run_matmul.sh $ITERS 1792 3584 7168 1792 64 1024 64 64 64 $FILE it1
+sh ./run_matmul.sh $ITERS 1792 3584 7168 1792 64 7168 64 64 64 $FILE it1
+
+sh ./run_matmul.sh $ITERS 1792 3584 7168 64 1792 64 64 64 64 $FILE jt1
+sh ./run_matmul.sh $ITERS 1792 3584 7168 64 3584 64 64 64 64 $FILE jt1
+sh ./run_matmul.sh $ITERS 1792 3584 7168 64 256 1792 64 64 64 $FILE jt1
+sh ./run_matmul.sh $ITERS 1792 3584 7168 64 896 3584 64 64 64 $FILE jt1
+
+sh ./run_matmul.sh $ITERS 1792 3584 7168 64 1792 256 64 64 64 $FILE jt1
+sh ./run_matmul.sh $ITERS 1792 3584 7168 64 3584 512 64 64 64 $FILE jt1
+sh ./run_matmul.sh $ITERS 1792 3584 7168 64 1792 1024 64 64 64 $FILE jt1
+sh ./run_matmul.sh $ITERS 1792 3584 7168 64 3584 7168 64 64 64 $FILE jt1
+
+
+
+
+

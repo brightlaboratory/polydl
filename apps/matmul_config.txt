@@ -1,0 +1,11 @@
+cache
+L1 32768
+L2 1048576
+L3 40370176
+
+datatype_size
+4
+
+params
+M N K
+1000 2000 3000

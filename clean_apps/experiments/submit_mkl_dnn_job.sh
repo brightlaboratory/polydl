@@ -1,0 +1,1 @@
+sbatch run_mkl_dnn_experiments.batch

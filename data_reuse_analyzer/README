@@ -1,0 +1,22 @@
+The following environment variables need to be set:
+export LD_LIBRARY_PATH=${PWD}/../third_party/barvinok-0.41.5_install/lib:${LD_LIBRARY_PATH}
+source /swtools/clang/12.0.0/vars.sh
+
+The tool has been tested with the following versions of dependencies:
+barvinok-0.41.2
+ntl-11.3.2
+barvinok-0.41.5
+clang 12.0.0
+
+The tool has been compiled with:
+g++ (GCC) 9.3.0
+
+Example usage: 
+./polyscientist --input conv.c --parameters 'ofw ofh nIfm nOfm kw kh pad_w pad_h nImg ifwp ifhp ofwp ofhp : 7 7 2048 512 1 1 0 0 1  7 7 7 7' --cachesizes 'L1 32768 L2 1048576 L3 1441792' --datatypesize 4 --minout
+
+The polyscientist/polydl tool analyzes the loop nest within #pragma scop and #pragma endscop and outputs the working set sizes. For example, the output of the above invocation of the polyscientist tool will be the following:
+
+$cat conv.c_ws_stats.csv
+17144,620296,0,4552448
+
+The L1, L2, L3, and memory working set sizes (in bytes) are determined to be: 17144, 620296, 0, and 4552448 bytes respectively.

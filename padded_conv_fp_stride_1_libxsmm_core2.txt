@@ -1,0 +1,252 @@
+
+d := parse_file "/nfs_home/stavarag/work/polyscientist/apps/padded_conv_fp_stride_1_libxsmm_core2.c";
+
+#Iteration space
+I := [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> {  S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm, ifm] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw and 0 <= ofm <= 15 and 0 <= ifm <= 15 };
+
+codegen(identity(I));
+
+#Read relations
+r_input := [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> { S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm, ifm] -> pad_gemm_input[img, ifm_tile, oj + kj, ki + oi, ifm]};
+
+r_filter := [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> { S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm, ifm] -> filter[ofm_tile, ifm_tile, kj, ki, ifm, ofm]};
+
+#Write relation
+
+w_output := [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> { S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm, ifm] -> output[img, ofm_tile, oj, oi, ofm] };
+
+all_R_and_W := r_input + r_filter + w_output;
+
+#Read After Read dependences
+input_reads := r_input * I;
+sched := identity(I);
+d_input_rar := last input_reads before input_reads under sched;
+
+filter_reads := r_filter * I;
+sched := identity(I);
+d_filter_rar := last filter_reads before filter_reads under sched;
+
+#Reuse 1
+input_array_reuse_1 := [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> { 
+S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm, ifm] -> 
+S_31[img' = img, oj' = oj, kj' = kj, ki' = ki, ofm_tile' = ofm_tile, ifm_tile' = ifm_tile, oi' = oi, ofm' = 1 + ofm, ifm' = ifm] 
+: 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and kj < 2pad_h + ifhp - oj and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw and oi < 2pad_w + ifwp - ki and 0 <= ofm <= 14 and 0 <= ifm <= 15; 
+};
+
+#Reuse 2
+input_array_reuse_2 := [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> { 
+S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm = 15, ifm] -> 
+S_31[img' = img, oj' = oj, kj' = kj, ki' = ki, ofm_tile' = 1 + ofm_tile, ifm_tile' = ifm_tile, oi' = oi, ofm' = 0, ifm' = ifm] 
+: 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and kj < 2pad_h + ifhp - oj and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -32 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw and oi < 2pad_w + ifwp - ki and 0 <= ifm <= 15; 
+};
+
+#Reuse 3
+input_array_reuse_3 := [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> {
+S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm = 15, ifm] -> 
+S_31[img' = img, oj' = oj, kj' = kj, ki' = 1 + ki, ofm_tile' = 0, ifm_tile' = ifm_tile, oi' = -1 + oi, ofm' = 0, ifm' = ifm] 
+: nOfm >= 16 and 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and kj < 2pad_h + ifhp - oj and 0 <= ki <= -2 + kw and -31 + nOfm <= 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 < oi < ofw and oi < 2pad_w + ifwp - ki and 0 <= ifm <= 15; 
+};
+
+#Reuse 4
+input_array_reuse_4 := [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> {
+S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi = 0, ofm = 15, ifm] -> 
+S_31[img' = img, oj' = 1 + oj, kj' = -1 + kj, ki' = 0, ofm_tile' = 0, ifm_tile' = ifm_tile, oi' = ki, ofm' = 0, ifm' = ifm] 
+: nOfm >= 16 and 0 <= img < nImg and 0 <= oj <= -2 + ofh and 0 < kj < kh and kj < 2pad_h + ifhp - oj and 0 <= ki < ofw and ki < kw and ki < 2pad_w + ifwp and -31 + nOfm <= 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= ifm <= 15; 
+};
+
+#Reuse 5
+input_array_reuse_5 := [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> {
+S_31[img, oj, kj, ki = -1 + kw, ofm_tile, ifm_tile, oi, ofm = 15, ifm] -> 
+S_31[img' = img, oj' = 1 + oj, kj' = -1 + kj, ki' = 0, ofm_tile' = 0, ifm_tile' = ifm_tile, oi' = -1 + kw + oi, ofm' = 0, ifm' = ifm] 
+: nOfm >= 16 and kw > 0 and 0 <= img < nImg and 0 <= oj <= -2 + ofh and 0 < kj < kh and kj < 2pad_h + ifhp - oj and -31 + nOfm <= 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 < oi <= -kw + ofw and oi <= 2pad_w + ifwp - kw and 0 <= ifm <= 15; 
+};
+
+#Reuse 6
+input_array_reuse_6 := [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> {
+S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi = 0, ofm = 15, ifm] -> 
+S_31[img' = img, oj' = 1 + oj, kj' = -1 + kj, ki' = 1 - ofw + ki, ofm_tile' = 0, ifm_tile' = ifm_tile, oi' = -1 + ofw, ofm' = 0, ifm' = ifm] 
+: nOfm >= 16 and ofw > 0 and 0 <= img < nImg and 0 <= oj <= -2 + ofh and 0 < kj < kh and kj < 2pad_h + ifhp - oj and ofw <= ki < kw and ki < 2pad_w + ifwp and -31 + nOfm <= 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= ifm <= 15; 
+};
+
+#Reuse 7
+input_array_reuse_7 := [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> {
+S_31[img, oj, kj, ki = -1 + kw, ofm_tile, ifm_tile, oi, ofm = 15, ifm] -> 
+S_31[img' = img, oj' = 1 + oj, kj' = -1 + kj, ki' = kw - ofw + oi, ofm_tile' = 0, ifm_tile' = ifm_tile, oi' = -1 + ofw, ofm' = 0, ifm' = ifm] 
+: nOfm >= 16 and 0 <= img < nImg and 0 <= oj <= -2 + ofh and 0 < kj < kh and kj < 2pad_h + ifhp - oj and -31 + nOfm <= 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and oi > 0 and -kw + ofw < oi < ofw and oi <= 2pad_w + ifwp - kw and 0 <= ifm <= 15 };
+
+#ofm loop reuse
+I_input_reuse_1_source := sample dom input_array_reuse_1;
+I_input_reuse_1_source := lexmin dom input_array_reuse_1;
+I_input_reuse_1_target := input_array_reuse_1(I_input_reuse_1_source);
+I_till_input_reuse_1_source := dom(I << I_input_reuse_1_source);
+I_till_input_reuse_1_target := dom(I <<= I_input_reuse_1_target);
+I_input_reuse_1_WS := I_till_input_reuse_1_target - I_till_input_reuse_1_source;
+input_reuse_1_WS := all_R_and_W(I_input_reuse_1_WS);
+input_reuse_1_WS_size := card input_reuse_1_WS;
+input_reuse_1_WS_size;
+#Result: 35 elements = 35 * 4 = 140 bytes
+
+#ofm_tile reuse
+I_input_reuse_2_source := lexmin dom input_array_reuse_2;
+I_input_reuse_2_target := input_array_reuse_2(I_input_reuse_2_source);
+I_till_input_reuse_2_source := dom(I << I_input_reuse_2_source);
+I_till_input_reuse_2_target := dom(I <<= I_input_reuse_2_target);
+I_input_reuse_2_WS := I_till_input_reuse_2_target - I_till_input_reuse_2_source;
+input_reuse_2_WS := all_R_and_W(I_input_reuse_2_WS);
+input_reuse_2_WS_size := card input_reuse_2_WS;
+input_reuse_2_WS_size;
+
+
+ctx := [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> {  : pad_w <= 1073741823 and -2pad_w <= ifwp <= 2147483647 - 2pad_w and ifwp <= 2147483647 and pad_h <= 1073741823 and -2pad_h <= ifhp <= 2147483647 - 2pad_h and ifhp <= 2147483647 and -15 <= nIfm <= 2147483647 and 0 <= ofwp <= 2147483647 and 0 <= ofhp <= 2147483647 and -15 <= nOfm <= 2147483647 and -2147483648 <= nImg <= 2147483647 and ofh <= 2147483647 and -2147483648 <= ofw <= 2147483647 and ((0 <= kw <= 2147483647 and 0 <= kh <= 2147483647 and nImg <= 0 and ofh >= -2147483648) or (nIfm >= 16 and nOfm >= 16 and 0 < kw <= 2147483647 and kh <= 2147483647 and nImg > 0 and ofh >= 2147483650 - kh and ofw <= 0) or (0 <= nIfm <= 15 and nOfm >= 16 and 0 < kw <= 2147483647 and 0 < kh <= 2147483647 and nImg > 0 and ofh > 0) or (nIfm >= 0 and nOfm <= 15 and 0 < kw <= 2147483647 and 0 < kh <= 2147483647 and nImg > 0 and ofh > 0) or (nIfm < 0 and 0 < kw <= 2147483647 and 0 < kh <= 2147483647 and nImg > 0 and ofh > 0) or (0 <= kw <= 2147483647 and 0 <= kh <= 2147483647 and nImg > 0 and -2147483648 <= ofh <= 0) or (nIfm >= 16 and nOfm >= 16 and 0 < kw <= 2147483647 and 0 < kh <= 2147483647 and nImg > 0 and 0 < ofh <= 2147483649 - kh and ofw <= 2147483649 - kw) or (kh = 0 and 0 <= kw <= 2147483647 and nImg > 0 and ofh > 0) or (kw = 0 and 0 < kh <= 2147483647 and nImg > 0 and ofh > 0)) };
+
+ctx := [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> {  : pad_w = 0 and ifwp = 56 and pad_h = 0 and ifhp = 56 and nIfm = 64 and ofwp = 56 and ofhp = 56 and nOfm = 256 and kw = 1 and kh = 1 and nImg = 1 and ofh = 56 and ofw = 56  };
+
+input_reuse_2_WS_size % ctx;
+#Result: $9 := [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> { 5506 }
+
+#Result: [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> { 
+#((2 + 16 * ofw) + (256 + 16 * ofw) * floor((nIfm)/16)) 
+
+2 + 16 * 56 + (256 + 16 * 56) * (64/16)
+
+: ifwp > -2pad_w and ifhp > -2pad_h and nIfm >= 32 and nOfm >= 32 and kw > 0 and kh > 0 and nImg > 0 and ofh > 0 and ofw >= 2; 
+#(243 + 32 * ofw) 
+: ifwp > -2pad_w and ifhp > -2pad_h and 16 <= nIfm <= 31 and nOfm >= 32 and kw > 0 and kh > 0 and nImg > 0 and ofh > 0 and ofw >= 2; 
+#(-222 + 272 * floor((nIfm)/16)) 
+: ofw = 1 and ifwp > -2pad_w and ifhp > -2pad_h and nIfm >= 32 and nOfm >= 32 and kw > 0 and kh > 0 and nImg > 0 and ofh > 0; 35 : ofw = 1 and ifwp > -2pad_w and ifhp > -2pad_h and 16 <= nIfm <= 31 and nOfm >= 32 and kw > 0 and kh > 0 and nImg > 0 and ofh > 0 }
+
+
+#[ki, oi] -> [ki + 1, oi - 1] because of [oi+ki] index expression in pad_gemm_input[img][ifm_tile][oj + kj][oi + ki][ifm];
+I_input_reuse_3_source := lexmin dom input_array_reuse_3;
+I_input_reuse_3_target := input_array_reuse_3(I_input_reuse_3_source);
+I_till_input_reuse_3_source := dom(I << I_input_reuse_3_source);
+I_till_input_reuse_3_target := dom(I <<= I_input_reuse_3_target);
+I_input_reuse_3_WS := I_till_input_reuse_3_target - I_till_input_reuse_3_source;
+input_reuse_3_WS := all_R_and_W(I_input_reuse_3_WS);
+input_reuse_3_WS_size := card input_reuse_3_WS;
+input_reuse_3_WS_size;
+#[pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> { ((-14 + 16 * ofw) + (256 + 16 * ofw) * floor((nIfm)/16)) : ifwp >= 2 - 2pad_w and ifhp > -2pad_h and nIfm >= 32 and nOfm >= 32 and kw >= 2 and kh > 0 and nImg > 0 and ofh > 0 and ofw >= 3; (211 + 32 * ofw) : ifwp >= 2 - 2pad_w and ifhp > -2pad_h and 16 <= nIfm <= 31 and nOfm >= 32 and kw >= 2 and kh > 0 and nImg > 0 and ofh > 0 and ofw >= 3; ((-15 + 16 * ofw) + (256 + 16 * ofw) * floor((nIfm)/16)) : ifwp >= 2 - 2pad_w and ifhp > -2pad_h and nIfm >= 32 and 16 <= nOfm <= 31 and kw >= 2 and kh > 0 and nImg > 0 and ofh > 0 and ofw >= 3; (211 + 32 * ofw) : ifwp >= 2 - 2pad_w and ifhp > -2pad_h and 16 <= nIfm <= 31 and 16 <= nOfm <= 31 and kw >= 2 and kh > 0 and nImg > 0 and ofh > 0 and ofw >= 3; (-222 + 288 * floor((nIfm)/16)) : ofw = 2 and ifwp >= 2 - 2pad_w and ifhp > -2pad_h and nIfm >= 32 and nOfm >= 32 and kw >= 2 and kh > 0 and nImg > 0 and ofh > 0; (-223 + 288 * floor((nIfm)/16)) : ofw = 2 and ifwp >= 2 - 2pad_w and ifhp > -2pad_h and nIfm >= 32 and 16 <= nOfm <= 31 and kw >= 2 and kh > 0 and nImg > 0 and ofh > 0; 35 : ofw = 2 and ifwp >= 2 - 2pad_w and ifhp > -2pad_h and 16 <= nIfm <= 31 and nOfm >= 32 and kw >= 2 and kh > 0 and nImg > 0 and ofh > 0; 35 : ofw = 2 and ifwp >= 2 - 2pad_w and ifhp > -2pad_h and 16 <= nIfm <= 31 and 16 <= nOfm <= 31 and kw >= 2 and kh > 0 and nImg > 0 and ofh > 0 }
+
+#((-14 + 16 * ofw) + (256 + 16 * ofw) * floor((nIfm)/16)) = 882
+#(211 + 32 * ofw) = 2003
+#(-222 + 288 * floor((nIfm)/16))
+#(-223 + 288 * floor((nIfm)/16))
+#35
+#Max: 2003 elements = 8012 = 9KB
+
+##Below command lines not used
+((I << I_input_reuse_1_source)^-1)(I_input_reuse_1_source);
+((I << I_input_reuse_1_target)^-1)(I_input_reuse_1_target);
+#Checked why w_output(I_input_reuse_1_WS) is returning an empty set. It is because the context -- constraints being different
+w_output(I_input_reuse_1_WS);
+$66 := [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> {  }
+
+#Whereas the following works
+w_output_simple :=  [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> { S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm, ifm] -> output[img, ofm_tile, oj, oi, ofm] };
+
+w_output_simple(I_input_reuse_1_WS);
+
+sample dom input_array_reuse_2;
+
+input_array_reuses := [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> { 
+#Reuse 1
+S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm, ifm] -> 
+S_31[img' = img, oj' = oj, kj' = kj, ki' = ki, ofm_tile' = ofm_tile, ifm_tile' = ifm_tile, oi' = oi, ofm' = 1 + ofm, ifm' = ifm] 
+: 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and kj < 2pad_h + ifhp - oj and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw and oi < 2pad_w + ifwp - ki and 0 <= ofm <= 14 and 0 <= ifm <= 15; 
+
+#Reuse 2
+S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm = 15, ifm] -> 
+S_31[img' = img, oj' = oj, kj' = kj, ki' = ki, ofm_tile' = 1 + ofm_tile, ifm_tile' = ifm_tile, oi' = oi, ofm' = 0, ifm' = ifm] 
+: 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and kj < 2pad_h + ifhp - oj and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -32 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw and oi < 2pad_w + ifwp - ki and 0 <= ifm <= 15; 
+
+#Reuse 3
+S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm = 15, ifm] -> 
+S_31[img' = img, oj' = oj, kj' = kj, ki' = 1 + ki, ofm_tile' = 0, ifm_tile' = ifm_tile, oi' = -1 + oi, ofm' = 0, ifm' = ifm] 
+: nOfm >= 16 and 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and kj < 2pad_h + ifhp - oj and 0 <= ki <= -2 + kw and -31 + nOfm <= 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 < oi < ofw and oi < 2pad_w + ifwp - ki and 0 <= ifm <= 15; 
+
+#Reuse 4
+S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi = 0, ofm = 15, ifm] -> 
+S_31[img' = img, oj' = 1 + oj, kj' = -1 + kj, ki' = 0, ofm_tile' = 0, ifm_tile' = ifm_tile, oi' = ki, ofm' = 0, ifm' = ifm] 
+: nOfm >= 16 and 0 <= img < nImg and 0 <= oj <= -2 + ofh and 0 < kj < kh and kj < 2pad_h + ifhp - oj and 0 <= ki < ofw and ki < kw and ki < 2pad_w + ifwp and -31 + nOfm <= 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= ifm <= 15; 
+
+#Reuse 5
+S_31[img, oj, kj, ki = -1 + kw, ofm_tile, ifm_tile, oi, ofm = 15, ifm] -> 
+S_31[img' = img, oj' = 1 + oj, kj' = -1 + kj, ki' = 0, ofm_tile' = 0, ifm_tile' = ifm_tile, oi' = -1 + kw + oi, ofm' = 0, ifm' = ifm] 
+: nOfm >= 16 and kw > 0 and 0 <= img < nImg and 0 <= oj <= -2 + ofh and 0 < kj < kh and kj < 2pad_h + ifhp - oj and -31 + nOfm <= 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 < oi <= -kw + ofw and oi <= 2pad_w + ifwp - kw and 0 <= ifm <= 15; 
+
+#Reuse 6
+S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi = 0, ofm = 15, ifm] -> 
+S_31[img' = img, oj' = 1 + oj, kj' = -1 + kj, ki' = 1 - ofw + ki, ofm_tile' = 0, ifm_tile' = ifm_tile, oi' = -1 + ofw, ofm' = 0, ifm' = ifm] 
+: nOfm >= 16 and ofw > 0 and 0 <= img < nImg and 0 <= oj <= -2 + ofh and 0 < kj < kh and kj < 2pad_h + ifhp - oj and ofw <= ki < kw and ki < 2pad_w + ifwp and -31 + nOfm <= 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= ifm <= 15; 
+
+#Reuse 7
+S_31[img, oj, kj, ki = -1 + kw, ofm_tile, ifm_tile, oi, ofm = 15, ifm] -> 
+S_31[img' = img, oj' = 1 + oj, kj' = -1 + kj, ki' = kw - ofw + oi, ofm_tile' = 0, ifm_tile' = ifm_tile, oi' = -1 + ofw, ofm' = 0, ifm' = ifm] 
+: nOfm >= 16 and 0 <= img < nImg and 0 <= oj <= -2 + ofh and 0 < kj < kh and kj < 2pad_h + ifhp - oj and -31 + nOfm <= 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and oi > 0 and -kw + ofw < oi < ofw and oi <= 2pad_w + ifwp - kw and 0 <= ifm <= 15 };
+
+I_start := lexmin I;
+
+#Target iterations with I_start as the source
+I_start_target := input_array_reuses(I_start);
+card I_start_target;
+
+typeof input_array_reuses;
+#$21 := "map"
+
+I_param := [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw, img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm, ifm] -> {  S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm, ifm] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw and 0 <= ofm <= 15 and 0 <= ifm <= 15 };
+
+I_param_target := input_array_reuses(I_param);
+
+input_array_reuse_1 := [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> { 
+#Reuse 1
+S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm, ifm] -> 
+S_31[img' = img, oj' = oj, kj' = kj, ki' = ki, ofm_tile' = ofm_tile, ifm_tile' = ifm_tile, oi' = oi, ofm' = 1 + ofm, ifm' = ifm] 
+: 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and kj < 2pad_h + ifhp - oj and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw and oi < 2pad_w + ifwp - ki and 0 <= ofm <= 14 and 0 <= ifm <= 15; };
+
+input_array_reuse_2 := [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> {
+#Reuse 2
+S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm = 15, ifm] -> 
+S_31[img' = img, oj' = oj, kj' = kj, ki' = ki, ofm_tile' = 1 + ofm_tile, ifm_tile' = ifm_tile, oi' = oi, ofm' = 0, ifm' = ifm] 
+: 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and kj < 2pad_h + ifhp - oj and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -32 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw and oi < 2pad_w + ifwp - ki and 0 <= ifm <= 15; };
+
+I_start_target_1 := input_array_reuse_1(I_start);
+I_start_target_2 := input_array_reuse_2(I_start);
+
+sample dom input_array_reuses;
+sample dom input_array_reuse_1;
+sample dom input_array_reuse_2;
+
+
+d_input_rar;
+$9 := ([pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> { S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm, ifm] -> S_31[img' = img, oj' = oj, kj' = kj, ki' = ki, ofm_tile' = ofm_tile, ifm_tile' = ifm_tile, oi' = oi, ofm' = 1 + ofm, ifm' = ifm] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and kj < 2pad_h + ifhp - oj and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw and oi < 2pad_w + ifwp - ki and 0 <= ofm <= 14 and 0 <= ifm <= 15; S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm = 15, ifm] -> S_31[img' = img, oj' = oj, kj' = kj, ki' = ki, ofm_tile' = 1 + ofm_tile, ifm_tile' = ifm_tile, oi' = oi, ofm' = 0, ifm' = ifm] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and kj < 2pad_h + ifhp - oj and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -32 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw and oi < 2pad_w + ifwp - ki and 0 <= ifm <= 15; S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm = 15, ifm] -> S_31[img' = img, oj' = oj, kj' = kj, ki' = 1 + ki, ofm_tile' = 0, ifm_tile' = ifm_tile, oi' = -1 + oi, ofm' = 0, ifm' = ifm] : nOfm >= 16 and 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and kj < 2pad_h + ifhp - oj and 0 <= ki <= -2 + kw and -31 + nOfm <= 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 < oi < ofw and oi < 2pad_w + ifwp - ki and 0 <= ifm <= 15; S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi = 0, ofm = 15, ifm] -> S_31[img' = img, oj' = 1 + oj, kj' = -1 + kj, ki' = 0, ofm_tile' = 0, ifm_tile' = ifm_tile, oi' = ki, ofm' = 0, ifm' = ifm] : nOfm >= 16 and 0 <= img < nImg and 0 <= oj <= -2 + ofh and 0 < kj < kh and kj < 2pad_h + ifhp - oj and 0 <= ki < ofw and ki < kw and ki < 2pad_w + ifwp and -31 + nOfm <= 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= ifm <= 15; S_31[img, oj, kj, ki = -1 + kw, ofm_tile, ifm_tile, oi, ofm = 15, ifm] -> S_31[img' = img, oj' = 1 + oj, kj' = -1 + kj, ki' = 0, ofm_tile' = 0, ifm_tile' = ifm_tile, oi' = -1 + kw + oi, ofm' = 0, ifm' = ifm] : nOfm >= 16 and kw > 0 and 0 <= img < nImg and 0 <= oj <= -2 + ofh and 0 < kj < kh and kj < 2pad_h + ifhp - oj and -31 + nOfm <= 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 < oi <= -kw + ofw and oi <= 2pad_w + ifwp - kw and 0 <= ifm <= 15; S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi = 0, ofm = 15, ifm] -> S_31[img' = img, oj' = 1 + oj, kj' = -1 + kj, ki' = 1 - ofw + ki, ofm_tile' = 0, ifm_tile' = ifm_tile, oi' = -1 + ofw, ofm' = 0, ifm' = ifm] : nOfm >= 16 and ofw > 0 and 0 <= img < nImg and 0 <= oj <= -2 + ofh and 0 < kj < kh and kj < 2pad_h + ifhp - oj and ofw <= ki < kw and ki < 2pad_w + ifwp and -31 + nOfm <= 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= ifm <= 15; S_31[img, oj, kj, ki = -1 + kw, ofm_tile, ifm_tile, oi, ofm = 15, ifm] -> S_31[img' = img, oj' = 1 + oj, kj' = -1 + kj, ki' = kw - ofw + oi, ofm_tile' = 0, ifm_tile' = ifm_tile, oi' = -1 + ofw, ofm' = 0, ifm' = ifm] : nOfm >= 16 and 0 <= img < nImg and 0 <= oj <= -2 + ofh and 0 < kj < kh and kj < 2pad_h + ifhp - oj and -31 + nOfm <= 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and oi > 0 and -kw + ofw < oi < ofw and oi <= 2pad_w + ifwp - kw and 0 <= ifm <= 15 }, [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> { S_31[img, oj = 0, kj, ki = 0, ofm_tile = 0, ifm_tile, oi, ofm = 0, ifm] -> pad_gemm_input[img, ifm_tile, kj, oi, ifm] : nOfm >= 16 and ofh > 0 and 0 <= img < nImg and 0 <= kj < kh and kj < 2pad_h + ifhp and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and oi < ofw and oi < 2pad_w + ifwp and 0 <= ifm <= 15 and ((0 <= oi < kw) or (kw > 0 and oi >= kw)); S_31[img, oj = 0, kj, ki, ofm_tile = 0, ifm_tile, oi = -1 + ofw, ofm = 0, ifm] -> pad_gemm_input[img, ifm_tile, kj, -1 + ofw + ki, ifm] : nOfm >= 16 and ofh > 0 and 0 <= img < nImg and 0 <= kj < kh and kj < 2pad_h + ifhp and 0 < ki <= 2pad_w + ifwp - ofw and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= ifm <= 15 and ((ofw > 0 and ki <= kw - ofw) or (kw - ofw < ki < kw)); S_31[img, oj, kj = -1 + kh, ki = 0, ofm_tile = 0, ifm_tile, oi, ofm = 0, ifm] -> pad_gemm_input[img, ifm_tile, -1 + kh + oj, oi, ifm] : nOfm >= 16 and kh > 0 and 0 <= img < nImg and 0 < oj < ofh and oj <= 2pad_h + ifhp - kh and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and oi < ofw and oi < 2pad_w + ifwp and 0 <= ifm <= 15 and ((0 <= oi < kw) or (kw > 0 and oi >= kw)); S_31[img, oj, kj = -1 + kh, ki, ofm_tile = 0, ifm_tile, oi = -1 + ofw, ofm = 0, ifm] -> pad_gemm_input[img, ifm_tile, -1 + kh + oj, -1 + ofw + ki, ifm] : nOfm >= 16 and kh > 0 and 0 <= img < nImg and 0 < oj < ofh and oj <= 2pad_h + ifhp - kh and 0 < ki <= 2pad_w + ifwp - ofw and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= ifm <= 15 and ((ofw > 0 and ki <= kw - ofw) or (kw - ofw < ki < kw)) })
+
+
+d_filter_rar;
+$10 := ([pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> { S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm, ifm] -> S_31[img' = img, oj' = oj, kj' = kj, ki' = ki, ofm_tile' = ofm_tile, ifm_tile' = ifm_tile, oi' = 1 + oi, ofm' = ofm, ifm' = ifm] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi <= -2 + ofw and 0 <= ofm <= 15 and 0 <= ifm <= 15; S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi = -1 + ofw, ofm, ifm] -> S_31[img' = img, oj' = 1 + oj, kj' = kj, ki' = ki, ofm_tile' = ofm_tile, ifm_tile' = ifm_tile, oi' = 0, ofm' = ofm, ifm' = ifm] : ofw > 0 and 0 <= img < nImg and 0 <= oj <= -2 + ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= ofm <= 15 and 0 <= ifm <= 15; S_31[img, oj = -1 + ofh, kj, ki, ofm_tile, ifm_tile, oi = -1 + ofw, ofm, ifm] -> S_31[img' = 1 + img, oj' = 0, kj' = kj, ki' = ki, ofm_tile' = ofm_tile, ifm_tile' = ifm_tile, oi' = 0, ofm' = ofm, ifm' = ifm] : ofh > 0 and ofw > 0 and 0 <= img <= -2 + nImg and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= ofm <= 15 and 0 <= ifm <= 15 }, [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> { S_31[img = 0, oj = 0, kj, ki, ofm_tile, ifm_tile, oi = 0, ofm, ifm] -> filter[ofm_tile, ifm_tile, kj, ki, ifm, ofm] : nImg > 0 and ofh > 0 and ofw > 0 and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= ofm <= 15 and 0 <= ifm <= 15 })
+
+
+d[0];
+$0 := [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> { S_25[img, oj, kj] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh; S_34[img, oj, kj, ki, ofm_tile, ifm_tile, oi] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw; S_40[img] : 0 <= img < nImg; S_27[img, oj, kj, ki, ofm_tile] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm; S_22[]; S_29[img, oj, kj, ki, ofm_tile, ifm_tile, oi] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw;
+
+ S_32[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm, ifm] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw and 0 <= ofm <= 15 and 0 <= ifm <= 15; 
+
+
+ S_33[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw and 0 <= ofm <= 15; S_23[img] : 0 <= img < nImg; S_26[img, oj, kj, ki] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw; S_30[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw and 0 <= ofm <= 15; 
+
+ S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm, ifm] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw and 0 <= ofm <= 15 and 0 <= ifm <= 15; 
+
+ S_28[img, oj, kj, ki, ofm_tile, ifm_tile] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm; S_36[img, oj, kj, ki, ofm_tile] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm; S_35[img, oj, kj, ki, ofm_tile, ifm_tile] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm; S_38[img, oj, kj] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh; S_39[img, oj] : 0 <= img < nImg and 0 <= oj < ofh; S_24[img, oj] : 0 <= img < nImg and 0 <= oj < ofh; S_37[img, oj, kj, ki] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw }
+
+
+d[1];
+$1 := [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> { S_27[img, oj, kj, ki, ofm_tile] -> ifm_tile[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm; S_26[img, oj, kj, ki] -> ofm_tile[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw; S_25[img, oj, kj] -> ki[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh; S_22[] -> img[]; S_40[img] -> img[] : 0 <= img < nImg; S_37[img, oj, kj, ki] -> ki[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw; S_28[img, oj, kj, ki, ofm_tile, ifm_tile] -> oi[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm; S_36[img, oj, kj, ki, ofm_tile] -> ofm_tile[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm; S_34[img, oj, kj, ki, ofm_tile, ifm_tile, oi] -> oi[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw; S_24[img, oj] -> kj[] : 0 <= img < nImg and 0 <= oj < ofh; 
+
+S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm, ifm] -> output[img, ofm_tile, oj, oi, ofm] : 0 <= img < nImg and 0 <= oj < ofh and oj < ofhp and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw and oi < ofwp and 0 <= ofm <= 15 and 0 <= ifm <= 15; 
+
+S_32[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm, ifm] -> ifm[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw and 0 <= ofm <= 15 and 0 <= ifm <= 15; S_38[img, oj, kj] -> kj[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh; S_23[img] -> oj[] : 0 <= img < nImg; S_33[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm] -> ofm[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw and 0 <= ofm <= 15; S_35[img, oj, kj, ki, ofm_tile, ifm_tile] -> ifm_tile[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm; S_29[img, oj, kj, ki, ofm_tile, ifm_tile, oi] -> ofm[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw; S_30[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm] -> ifm[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw and 0 <= ofm <= 15; S_39[img, oj] -> oj[] : 0 <= img < nImg and 0 <= oj < ofh }
+
+d[2];
+$2 := [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> { S_27[img, oj, kj, ki, ofm_tile] -> ifm_tile[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm; S_26[img, oj, kj, ki] -> ofm_tile[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw; S_25[img, oj, kj] -> ki[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh; S_22[] -> img[]; S_40[img] -> img[] : 0 <= img < nImg; S_37[img, oj, kj, ki] -> ki[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw; S_28[img, oj, kj, ki, ofm_tile, ifm_tile] -> oi[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm; S_36[img, oj, kj, ki, ofm_tile] -> ofm_tile[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm; S_34[img, oj, kj, ki, ofm_tile, ifm_tile, oi] -> oi[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw; S_24[img, oj] -> kj[] : 0 <= img < nImg and 0 <= oj < ofh; S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm, ifm] -> output[img, ofm_tile, oj, oi, ofm] : 0 <= img < nImg and 0 <= oj < ofh and oj < ofhp and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw and oi < ofwp and 0 <= ofm <= 15 and 0 <= ifm <= 15; S_32[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm, ifm] -> ifm[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw and 0 <= ofm <= 15 and 0 <= ifm <= 15; S_38[img, oj, kj] -> kj[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh; S_23[img] -> oj[] : 0 <= img < nImg; S_33[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm] -> ofm[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw and 0 <= ofm <= 15; S_35[img, oj, kj, ki, ofm_tile, ifm_tile] -> ifm_tile[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm; S_29[img, oj, kj, ki, ofm_tile, ifm_tile, oi] -> ofm[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw; S_30[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm] -> ifm[] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw and 0 <= ofm <= 15; S_39[img, oj] -> oj[] : 0 <= img < nImg and 0 <= oj < ofh }
+
+d[3];
+$3 := [pad_w, ifwp, pad_h, ifhp, nIfm, ofwp, ofhp, nOfm, kw, kh, nImg, ofh, ofw] -> { S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm, ifm] -> pad_gemm_input[img, ifm_tile, oj + kj, ki + oi, ifm] : 0 <= img < nImg and 0 <= oj < ofh and kj >= 0 and -oj <= kj < kh and kj < 2pad_h + ifhp - oj and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and oi >= 0 and -ki <= oi < ofw and oi < 2pad_w + ifwp - ki and 0 <= ofm <= 15 and 0 <= ifm <= 15; S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm, ifm] -> filter[ofm_tile, ifm_tile, kj, ki, ifm, ofm] : 0 <= img < nImg and 0 <= oj < ofh and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw and 0 <= ofm <= 15 and 0 <= ifm <= 15; S_31[img, oj, kj, ki, ofm_tile, ifm_tile, oi, ofm, ifm] -> output[img, ofm_tile, oj, oi, ofm] : 0 <= img < nImg and 0 <= oj < ofh and oj < ofhp and 0 <= kj < kh and 0 <= ki < kw and ofm_tile >= 0 and 16ofm_tile <= -16 + nOfm and ifm_tile >= 0 and 16ifm_tile <= -16 + nIfm and 0 <= oi < ofw and oi < ofwp and 0 <= ofm <= 15 and 0 <= ifm <= 15 }

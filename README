@@ -1,0 +1,16 @@
+# PolyDL
+
+A polyhedral model based tool to perform loop optimizations for deep learning kernels. The tools especially in the data_reuse_analyzer folder are the based on the techniques published in the publication "PolyDL: Polyhedral Optimizations for Creation of High Performance DL primitives" https://arxiv.org/abs/2006.02230 https://dl.acm.org/doi/abs/10.1145/3433103
+
+data_reuse_analyzer/Main.cpp: Performs data reuse analysis and outputs working set sizes at L1, L2, and L3 caches. The working set sizes become the basis for ranking of code variants.
+
+scripts/PolyRank_pessi.cpp: Performs ranking among various code variants. It considers the cache latencies and L1, L2, L3 working set sizes.
+
+INSTALLATION
+sh install_dependencies.sh
+sh install.sh
+
+apps/dnn-models: The DNN based ranking python files.
+
+Convolution examples:
+apps/experiments/submit_job.sh provides a starting point for running convolution examples through the tool.

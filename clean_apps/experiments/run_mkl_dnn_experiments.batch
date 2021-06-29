@@ -1,0 +1,10 @@
+#!/bin/bash
+#
+#SBATCH --job-name=polyscientist
+#SBATCH --output=mkl.txt
+#
+#SBATCH --time=24:00:00
+#SBATCH --nodes=1
+#SBATCH --partition=clx
+cd $PWD 
+sh run_all_mkl_dnn.sh

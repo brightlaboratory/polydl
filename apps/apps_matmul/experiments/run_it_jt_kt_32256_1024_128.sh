@@ -1,0 +1,21 @@
+FILE=matmul3.c
+ITERS=1000
+sh ./run_matmul.sh $ITERS 32256 1024 128 64 64 64 64 64 64 $FILE it2
+sh ./run_matmul.sh $ITERS 32256 1024 128 1152 64 64 64 64 64 $FILE it2
+sh ./run_matmul.sh $ITERS 32256 1024 128 576 64 64 64 64 64 $FILE it2
+
+sh ./run_matmul.sh $ITERS 32256 1024 128 64 1024 64 64 64 64 $FILE it2
+sh ./run_matmul.sh $ITERS 32256 1024 128 1152 512 64 64 64 64 $FILE it2
+
+sh ./run_matmul.sh $ITERS 32256 1024 128 1792 64 64 64 64 64 $FILE it1
+sh ./run_matmul.sh $ITERS 32256 1024 128 3584 64 64 64 64 64 $FILE it1
+sh ./run_matmul.sh $ITERS 32256 1024 128 5376 64 64 64 64 64 $FILE it1
+sh ./run_matmul.sh $ITERS 32256 1024 128 32256 64 64 64 64 64 $FILE it1
+
+sh ./run_matmul.sh $ITERS 32256 1024 128 1792 1024 64 64 64 64 $FILE it1
+sh ./run_matmul.sh $ITERS 32256 1024 128 3584 512 64 64 64 64 $FILE it1
+sh ./run_matmul.sh $ITERS 32256 1024 128 5376 256 64 64 64 64 $FILE it1
+sh ./run_matmul.sh $ITERS 32256 1024 128 32256 1024 64 64 64 64 $FILE it1
+
+
+

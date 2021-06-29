@@ -1,0 +1,22 @@
+//MKL DNN performance with #thread-1
+
+resnet layer 1 -> 100.735 Gflops
+resnet layer 2 -> 96.9999 Gflops
+resnet layer 3 -> 101.403 Gflops
+resnet layer 4 -> 93.7973 Gflops
+resnet layer 5 -> 101.539 Gflops
+resnet layer 6 -> 95.4668 Gflops
+resnet layer 7 -> 93.7268 Gflops
+resnet layer 8 -> 101.963 Gflops
+resnet layer 9 -> 95.551  Gflops
+resnet layer 10 -> 101.646 Gflops
+resnet layer 11 -> 98.7792 Gflops
+resnet layer 12 -> 84.688  Gflops
+resnet layer 13 -> 99.8497 Gflops
+resnet layer 14 -> 99.8184 Gflops
+resnet layer 15 -> 92.5393 Gflops
+resnet layer 16 -> 91.996  Gflops
+resnet layer 17 -> 65.471  Gflops
+resnet layer 18 -> 92.8351 Gflops
+resnet layer 19 -> 91.5164 Gflops
+

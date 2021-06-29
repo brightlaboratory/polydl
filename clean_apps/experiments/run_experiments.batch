@@ -1,0 +1,10 @@
+#!/bin/bash
+#
+#SBATCH --job-name=polyscientist
+#SBATCH --output=run_experiments.txt
+#
+#SBATCH --time=24:00:00
+#SBATCH --nodes=1
+#SBATCH --partition=clx
+cd $PWD  #FIXME -- path
+sh run_all_conv.sh
